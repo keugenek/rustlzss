@@ -46,9 +46,13 @@ impl LZSS {
         // Dictionary for finding matches
         let mut dictionary: HashMap<&[u8], Vec<usize>> = HashMap::new();
         
+        // Calculate the maximum representable match length
+        let max_match_code = 255; // One byte to encode the match length adjustment
+        let max_match_length = max_match_code + self.min_match_length;
+        
         while pos < input_len {
             // Find the longest match in the sliding window
-            let max_look_ahead = std::cmp::min(input_len - pos, 255 + self.min_match_length);
+            let max_look_ahead = std::cmp::min(input_len - pos, max_match_length);
             let window_begin = if pos > self.window_size { pos - self.window_size } else { 0 };
             
             // Try to find the longest match
@@ -96,9 +100,9 @@ impl LZSS {
                 // Encode a match
                 control_byte |= 1 << bit_pos;
                 
-                // Check if distance is within bounds (we only have one byte for distance)
-                if best_match_dist > 255 {
-                    best_match_dist = 255; // Limit to max representable value
+                // Use 2 bytes for offset to support larger window sizes (up to 65535)
+                if best_match_dist > 65535 {
+                    best_match_dist = 65535; // Limit to max representable value with 2 bytes
                     // Recalculate match length with this constrained distance
                     let back_pos = pos - best_match_dist;
                     let mut adjusted_len = 0;
@@ -114,12 +118,16 @@ impl LZSS {
                         output.push(input[pos]);
                         pos += 1;
                     } else {
-                        output.push(best_match_dist as u8);
+                        // Store the distance using 2 bytes (little-endian)
+                        output.push((best_match_dist & 0xFF) as u8);            // Low byte
+                        output.push(((best_match_dist >> 8) & 0xFF) as u8);     // High byte
                         output.push((best_match_len - self.min_match_length) as u8);
                         pos += best_match_len;
                     }
                 } else {
-                    output.push(best_match_dist as u8);
+                    // Store the distance using 2 bytes (little-endian)
+                    output.push((best_match_dist & 0xFF) as u8);           // Low byte
+                    output.push(((best_match_dist >> 8) & 0xFF) as u8);    // High byte
                     output.push((best_match_len - self.min_match_length) as u8);
                     pos += best_match_len;
                 }
@@ -181,13 +189,14 @@ impl LZSS {
                 
                 if (control_byte & (1 << bit)) != 0 {
                     // This is a match reference
-                    if pos + 1 >= input.len() {
+                    if pos + 2 >= input.len() { // Need 2 bytes for distance + 1 for length
                         break; // Not enough data
                     }
                     
-                    let distance = input[pos] as usize;
-                    let length = (input[pos + 1] as usize) + self.min_match_length;
-                    pos += 2;
+                    // Read distance from 2 bytes (little-endian)
+                    let distance = (input[pos] as usize) | ((input[pos + 1] as usize) << 8);
+                    let length = (input[pos + 2] as usize) + self.min_match_length;
+                    pos += 3;
                     
                     // Sanity check
                     if distance == 0 || distance > output.len() {

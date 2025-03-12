@@ -102,5 +102,49 @@ fn basic_benchmark(c: &mut Criterion) {
              (compressed_text.len() as f64) / (text_data.len() as f64) * 100.0);
 }
 
-criterion_group!(benches, basic_benchmark);
+fn window_size_benchmark(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Window size comparison");
+    
+    // Generate a Wikipedia-like text (500KB)
+    let mut data = Vec::new();
+    let pattern = b"War and Peace (Russian: \xD0\x92\xD0\xBE\xD0\xB9\xD0\xBD\xD0\xB0 \xD0\xB8 \xD0\xBC\xD0\xB8\xD1\x80, romanized: Voyna i mir) is a literary work by Leo Tolstoy that chronicles the French invasion of Russia and the impact of the Napoleonic era on Tsarist society through the stories of five Russian aristocratic families. ";
+    
+    while data.len() < 500_000 {
+        data.extend_from_slice(pattern);
+        // Add some random variation to make distant matches more realistic
+        if data.len() % 5000 < 100 {
+            data.extend_from_slice(b"Pierre Bezukhov is the central character and often a voice for Tolstoy's own beliefs or struggles. ");
+        } 
+        else if data.len() % 8000 < 100 {
+            data.extend_from_slice(b"Natasha Rostova is a central character, introduced as not pretty but full of life, romantic and impulsive. ");
+        }
+    }
+    data.truncate(500_000);
+    
+    // Test different window sizes
+    let window_sizes = [1024, 4096, 8192, 16384, 32768];
+    
+    for &window_size in &window_sizes {
+        let lzss = LZSS::new(window_size, 3);
+        
+        // Measure compression
+        group.bench_function(format!("compress_window_{}", window_size), |b| {
+            b.iter(|| lzss.compress(black_box(&data)))
+        });
+        
+        // Calculate and print compression ratio
+        let compressed = lzss.compress(&data);
+        let ratio = (compressed.len() as f64) / (data.len() as f64) * 100.0;
+        println!("Window size {}: {:.2}% of original", window_size, ratio);
+        
+        // Measure decompression
+        group.bench_function(format!("decompress_window_{}", window_size), |b| {
+            b.iter(|| lzss.decompress(black_box(&compressed)))
+        });
+    }
+    
+    group.finish();
+}
+
+criterion_group!(benches, basic_benchmark, window_size_benchmark);
 criterion_main!(benches);
