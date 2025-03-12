@@ -2,6 +2,14 @@
 name = "rustzss"
 version = "0.1.0"
 edition = "2021"
+description = "Fast LZSS compression library with C/C++ FFI support"
+repository = "https://github.com/username/rustzss"
+license = "MIT"
+
+[lib]
+name = "rustzss"
+# Create a dynamic library by default for FFI purposes
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 rand = "0.8"

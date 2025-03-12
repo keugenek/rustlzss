@@ -9,6 +9,7 @@ A fast Rust implementation of the LZSS (Lempel-Ziv-Storer-Szymanski) compression
 - Configurable window size (up to 65535 bytes) and minimum match length
 - Simple API for easy integration
 - Robust handling of large files with reliable decompression
+- **C/C++ FFI support** for seamless integration with existing C++ codebases
 
 ## Usage
 
@@ -144,6 +145,105 @@ The implementation focuses on:
 2. **Reliability**: The algorithm handles edge cases properly, including overlapping references and self-referential patterns
 3. **Configurability**: Window size (up to 65535 bytes) and minimum match length can be adjusted for different use cases
 4. **Safety**: Careful bounds checking prevents out-of-range memory access
+
+## C/C++ Integration
+
+RustLZSS provides seamless FFI (Foreign Function Interface) integration for C and C++ projects, making it easy to include this optimized Rust implementation in existing C++ game engines or applications.
+
+### C API
+
+The C API provides low-level access to the LZSS functionality:
+
+```c
+// Include the header
+#include "rustzss.h"
+
+// Create an LZSS context
+LzssContext* context = lzss_create(16384, 3);
+
+// Compress data
+unsigned char* input = /* your data */;
+unsigned long input_size = /* input size */;
+unsigned long max_output_size = lzss_max_compressed_size(input_size);
+unsigned char* output = malloc(max_output_size);
+unsigned long compressed_size = 0;
+
+int result = lzss_compress(context, input, input_size, output, max_output_size, &compressed_size);
+if (result == 0) {
+    // Compression successful, compressed_size contains the actual size
+}
+
+// Decompress data
+unsigned long original_size = lzss_get_original_size(output, compressed_size);
+unsigned char* decompressed = malloc(original_size);
+unsigned long decompressed_size = 0;
+
+result = lzss_decompress(context, output, compressed_size, decompressed, original_size, &decompressed_size);
+if (result == 0) {
+    // Decompression successful
+}
+
+// Clean up
+lzss_destroy(context);
+free(output);
+free(decompressed);
+```
+
+### C++ API
+
+A more convenient C++ wrapper is also provided:
+
+```cpp
+// Include the C++ header
+#include "rustzss.hpp"
+
+// Create an LZSS compressor
+rustzss::LZSS lzss(16384, 3);
+
+// Compress data using std::vector
+std::vector<unsigned char> input = /* your data */;
+std::vector<unsigned char> compressed = lzss.compress(input);
+
+// Or compress from raw pointers
+unsigned char* raw_input = /* pointer to data */;
+size_t input_size = /* size of data */;
+std::vector<unsigned char> compressed = lzss.compress(raw_input, input_size);
+
+// Decompress data
+std::vector<unsigned char> decompressed = lzss.decompress(compressed);
+
+// Error handling is done via C++ exceptions
+try {
+    auto compressed = lzss.compress(input);
+    auto decompressed = lzss.decompress(compressed);
+} catch (const std::exception& e) {
+    std::cerr << "Error: " << e.what() << std::endl;
+}
+```
+
+### CMake Integration
+
+You can integrate the Rust library into your C++ project using CMake:
+
+```cmake
+# Find the Rust library
+set(RUSTZSS_LIB_DIR "/path/to/rustzss")
+include_directories("${RUSTZSS_LIB_DIR}/include")
+
+# Find the library based on platform
+if(WIN32)
+    set(RUSTZSS_LIB "${RUSTZSS_LIB_DIR}/target/release/rustzss.dll.lib")
+elseif(APPLE)
+    set(RUSTZSS_LIB "${RUSTZSS_LIB_DIR}/target/release/librustzss.dylib")
+else()
+    set(RUSTZSS_LIB "${RUSTZSS_LIB_DIR}/target/release/librustzss.so")
+endif()
+
+# Link against the library
+target_link_libraries(your_target ${RUSTZSS_LIB})
+```
+
+See the `examples/CMakeLists.txt` file for a complete example of how to build and link against the Rust library from C++.
 
 ## License
 

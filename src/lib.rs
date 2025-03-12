@@ -1,5 +1,8 @@
 use std::collections::HashMap;
 
+// Make the FFI module public
+pub mod ffi;
+
 /// LZSS encoder/decoder implementation for byte streams.
 /// 
 /// This implementation uses a sliding window approach with
