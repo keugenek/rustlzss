@@ -14,8 +14,16 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 rand = "0.8"
 
+# Optional dependencies for autotuning
+rayon = { version = "1.7", optional = true }
+
 [dev-dependencies]
 criterion = "0.5"
+
+[features]
+default = []
+# Enable autotuning capabilities
+autotune = ["rayon"]
 
 [[bench]]
 name = "benchmark"

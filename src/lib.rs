@@ -3,6 +3,10 @@ use std::collections::HashMap;
 // Make the FFI module public
 pub mod ffi;
 
+// Add autotuning support
+#[cfg(feature = "autotune")]
+pub mod autotune;
+
 /// LZSS encoder/decoder implementation for byte streams.
 /// 
 /// This implementation uses a sliding window approach with
