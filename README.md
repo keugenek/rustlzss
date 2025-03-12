@@ -1,4 +1,4 @@
-# RustZSS
+# RustLZSS
 
 A fast Rust implementation of the LZSS (Lempel-Ziv-Storer-Szymanski) compression algorithm.
 
